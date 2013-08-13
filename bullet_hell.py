@@ -8,6 +8,7 @@ clock = pygame.time.Clock()
 Frames_Per_Second = 30
 gametime = 0
 
+#Set the screen parameters
 width = 1000
 height = 550
 screen = pygame.display.set_mode((width,height))
@@ -15,7 +16,7 @@ screen = pygame.display.set_mode((width,height))
 #fontObj = pygame.font.Font('freesansbold.ttf',32)
 
 
-# Load needed images, create variables to hold their sizes, etc
+# Load background image, initialize background and caption
 sky = pygame.image.load("clouds1.jpg").convert()
 screen.blit(sky,(0,0))
 screen.convert_alpha()
@@ -40,6 +41,9 @@ class Ship(pygame.sprite.Sprite):
     def change_vel(self,x,y):
         self.vel[0] += x
         self.vel[1] += y
+		
+	def shoot(self):
+		return None
         
     def update(self):
         global width, height
@@ -134,6 +138,8 @@ while True:
                 player_ship.change_vel(0,-4)
             if event.key == pygame.K_DOWN:
                 player_ship.change_vel(0,4)
+			if event.key == pygame.K_SPACE:
+				player_ship.shoot()
                 
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
