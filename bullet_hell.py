@@ -42,8 +42,9 @@ class Ship(pygame.sprite.Sprite):
         self.vel[0] += x
         self.vel[1] += y
 		
-	def shoot(self):
-		return None
+    def shoot(self):
+        missile_start = [self.rect.topright[0],self.rect.centery]
+        missile_group.add(Missile(missile_start,10,[1,0], "friendly"))
         
     def update(self):
         global width, height
@@ -86,21 +87,22 @@ class Enemy(pygame.sprite.Sprite):
     
     def shoot(self):
         missile_start = [self.rect.topleft[0],self.rect.centery]
-        missile_group.add(EnemyMissile(missile_start,10,self.vector_to_ship(player_ship)))
+        missile_group.add(Missile(missile_start,10,self.vector_to_ship(player_ship),"enemy"))
 
-class EnemyMissile(pygame.sprite.Sprite):
+class Missile(pygame.sprite.Sprite):
     age = 0
-    def __init__(self,pos,vel,vel_vector):
+    def __init__(self,pos,vel,vel_vector, type):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load("enemy_missile.png").convert()
         self.rect = self.image.get_rect()
         self.rect.topleft = pos
         self.vel = [vel*i for i in vel_vector]
+        self.type = type
         
     def update(self):
         self.rect.x += self.vel[0]
         self.rect.y += self.vel[1]
-        if self.age > 100:
+        if self.age > 80:
             dead_sprite_group.add(self)
         self.age += 1
         
@@ -114,7 +116,7 @@ def enemy_spawner(interval):
 player_ship = Ship(200,225)
 player_sprite_group = pygame.sprite.Group((player_ship))
 
-#Initialize a group of enemy sprites and a group of dead sprites
+#Initialize groups of enemy sprites, missile sprites and dead sprites
 #Every update, the list of dead sprites will be removed from the list of enemy sprites
 enemy_sprite_group = pygame.sprite.Group()
 missile_group = pygame.sprite.Group()
@@ -138,8 +140,8 @@ while True:
                 player_ship.change_vel(0,-4)
             if event.key == pygame.K_DOWN:
                 player_ship.change_vel(0,4)
-			if event.key == pygame.K_SPACE:
-				player_ship.shoot()
+            if event.key == pygame.K_SPACE:
+                player_ship.shoot()
                 
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
@@ -154,6 +156,7 @@ while True:
     #Spawn a new enemy at some set time interval in seconds
     gametime +=1
     enemy_spawner(1)
+    
     #Remove dead enemies from the enemy sprite group, then empty the dead sprite group
     enemy_sprite_group.remove(dead_sprite_group.sprites())
     missile_group.remove(dead_sprite_group.sprites())
