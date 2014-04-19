@@ -12,17 +12,19 @@ gametime = 0
 width = 1000
 height = 550
 screen = pygame.display.set_mode((width,height))
-#blueColor = pygame.Color(0,0,255)
-#fontObj = pygame.font.Font('freesansbold.ttf',32)
+fontObj = pygame.font.Font('freesansbold.ttf',26)
 
-
-# Load background image, initialize background and caption
+#Load background image, initialize score, background and caption
 sky = pygame.image.load("clouds1.jpg").convert()
+lifepack_image = pygame.image.load("LifeUp.png").convert()
 screen.blit(sky,(0,0))
 screen.convert_alpha()
 pygame.display.set_caption("Bullet Hell using PyGame")
     
-
+#Initialize player status variables
+score=0
+lives=3
+respawn=0
 
 #Class to represent the player's ship
 class Ship(pygame.sprite.Sprite):
@@ -44,16 +46,21 @@ class Ship(pygame.sprite.Sprite):
 		
     def shoot(self):
         missile_start = [self.rect.topright[0],self.rect.centery]
-        missile_group.add(Missile(missile_start,10,[1,0], "friendly"))
+        player_missile_group.add(Missile(missile_start,10,[1,0], "friendly"))
         
     def update(self):
-        global width, height
+        global width, height, lives, respawn
         new_x = self.rect.x + self.vel[0]
         new_y = self.rect.y + self.vel[1]
         if (new_x > 0) and (new_x < width-self.rect.width):
             self.rect.x = new_x
         if (new_y > 0) and (new_y < height-self.rect.height):
             self.rect.y = new_y
+        missile_hit_list = pygame.sprite.spritecollide(self,enemy_missile_group, True)
+        if missile_hit_list != []:
+            lives -= 1
+            dead_sprite_group.add(self)
+            respawn=1
 
 #Class for enemy ships
 class Enemy(pygame.sprite.Sprite):
@@ -66,16 +73,24 @@ class Enemy(pygame.sprite.Sprite):
         self.vel = vel
         
     def update(self):
-        global width, height
+        global width, height, score
+        #Move the enemy sprite
         self.rect.x += self.vel[0]
         self.rect.y += self.vel[1]
+        #Check to see if a ship has collided with a player missile
+        missile_hit_list = pygame.sprite.spritecollide(self,player_missile_group, True)
+        if missile_hit_list != []:
+            score += 1
+            dead_sprite_group.add(self)
+        #Remove enemies that have moved off the screen
         if self.rect.y >= height:
             dead_sprite_group.add(self)
-        if self.age%30 == 0:
+        #Shoot a missile every second
+        if self.age%30 == 0 and respawn == 0:
             self.shoot()
         self.age += 1
         
-    #method to define a vector so that the enemy can shoot in the direction of the player    
+    #method to define a vector so that the enemy ships can shoot in the direction of the player    
     def vector_to_ship(self,player):
         vector = [0,0]
         vector[0] = player.rect.centerx - self.rect.centerx
@@ -87,7 +102,7 @@ class Enemy(pygame.sprite.Sprite):
     
     def shoot(self):
         missile_start = [self.rect.topleft[0],self.rect.centery]
-        missile_group.add(Missile(missile_start,10,self.vector_to_ship(player_ship),"enemy"))
+        enemy_missile_group.add(Missile(missile_start,10,self.vector_to_ship(player_ship),"enemy"))
 
 class Missile(pygame.sprite.Sprite):
     age = 0
@@ -119,7 +134,8 @@ player_sprite_group = pygame.sprite.Group((player_ship))
 #Initialize groups of enemy sprites, missile sprites and dead sprites
 #Every update, the list of dead sprites will be removed from the list of enemy sprites
 enemy_sprite_group = pygame.sprite.Group()
-missile_group = pygame.sprite.Group()
+player_missile_group = pygame.sprite.Group()
+enemy_missile_group = pygame.sprite.Group()
 dead_sprite_group = pygame.sprite.Group()
     
 while True:
@@ -140,8 +156,12 @@ while True:
                 player_ship.change_vel(0,-4)
             if event.key == pygame.K_DOWN:
                 player_ship.change_vel(0,4)
-            if event.key == pygame.K_SPACE:
+            if event.key == pygame.K_SPACE and respawn == 0:
                 player_ship.shoot()
+            if event.key == pygame.K_r and respawn==1:
+                respawn=0
+                player_ship = Ship(200,225)
+                player_sprite_group = pygame.sprite.Group((player_ship))
                 
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
@@ -159,22 +179,49 @@ while True:
     
     #Remove dead enemies from the enemy sprite group, then empty the dead sprite group
     enemy_sprite_group.remove(dead_sprite_group.sprites())
-    missile_group.remove(dead_sprite_group.sprites())
+    enemy_missile_group.remove(dead_sprite_group.sprites())
+    player_missile_group.remove(dead_sprite_group.sprites())
+    player_sprite_group.remove(dead_sprite_group.sprites())
     dead_sprite_group.empty()
     
     #Update sprites and game time
     player_ship.update()
     enemy_sprite_group.update()
-    missile_group.update()
-
+    enemy_missile_group.update()
+    player_missile_group.update()
+    
+    #Overwrite what was on the screen, so text updates instead of writes over old
+    screen.blit(sky,(0,0))
+    screen.convert_alpha()
+    
+    #Update text
+    #Score
+    scoreMessage='Score: ' + str(score)
+    scoreText = fontObj.render(scoreMessage, True, (255,255,255))
+    scoreTextRect = scoreText.get_rect()
+    scoreTextRect.left = 30
+    scoreTextRect.centery = 50
+    screen.blit(scoreText,scoreTextRect)
+    #Lives
+    if respawn == 0:
+        livesMessage='Lives: ' + str(lives)
+    else:
+        livesMessage='Press R to respawn'
+    livesText = fontObj.render(livesMessage, True, (255,255,255))
+    livesTextRect = livesText.get_rect()
+    livesTextRect.left = 30
+    livesTextRect.centery = 80
+    screen.blit(livesText,livesTextRect)    
     
     #Handle all drawing here
     player_sprite_group.clear(screen,sky)
     player_sprite_group.draw(screen)
     enemy_sprite_group.clear(screen,sky)
     enemy_sprite_group.draw(screen)
-    missile_group.clear(screen,sky)
-    missile_group.draw(screen)
+    enemy_missile_group.clear(screen,sky)
+    enemy_missile_group.draw(screen)
+    player_missile_group.clear(screen,sky)
+    player_missile_group.draw(screen)
     pygame.display.flip()
     
     #Limit to the amount of frames per second specified
